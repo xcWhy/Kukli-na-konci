@@ -1,120 +1,120 @@
-import numpy as np
 import cv2
+import mediapipe as mp
 from pyfirmata import Arduino, SERVO, util
 from time import sleep
 
-port = 'COM5'
-pin = 10 # 180
-pin2 = 11 # 360
-pin3 = 12 # 360
+port = 'COM7'
+pin = 9 # 360
+pin2 = 10 # 360
+pin3 = 11 # 360
 board = Arduino(port)
 
 board.digital[pin].mode = SERVO
 board.digital[pin2].mode = SERVO
 board.digital[pin3].mode = SERVO
 
-# imgpath = 'C:\\Users\\eli\\PycharmProjects\\kukli_na_konci\\'
-imgpath = 'D:\\Desktop\\uch 10g\\VMKS\\OpenCV-Tutorials-main\\assets\\'
-
 cap = cv2.VideoCapture(0)
 
-# print(h, w)
-
-class img_object():
-    def __init__(self, img_file) -> None:
-        
-        self.img_file = img_file
-        
-        self.img = cv2.imread(imgpath + self.img_file, 1)
-        self.img = cv2.cvtColor(self.img, cv2.COLOR_BGR2GRAY)
-        
-        self.h, self.w = self.img.shape
-
-        
-    def check(self):
-        
-        self.result = cv2.matchTemplate(gray, self.img, method)
-        self.min_val, self.max_val, self.min_loc, self.max_loc = cv2.minMaxLoc(self.result)
-        
-        self.location = self.max_loc
-        
-        self.bottom_right = (self.location[0] + self.w, self.location[1] + self.h)
-           
-        
-        
-one_img = img_object('one_pic4.jpg')
-two_img = img_object('two_pic2.jpg')
-three_img = img_object('three_pic2.jpg')
+mp_drawing = mp.solutions.drawing_utils
+mp_pose = mp.solutions.pose
+pose = mp_pose.Pose(min_detection_confidence=0.5, min_tracking_confidence=0.5)
 
 
-method = cv2.TM_CCOEFF_NORMED
-    
-    
+def get_landmark_coords(pose_results):
+    landmark_coords = {}
+    if pose_results.pose_landmarks is not None:
+        for i, landmark in enumerate(pose_results.pose_landmarks.landmark):
+            landmark_coords[f"Landmark {i}"] = (landmark.x, landmark.y)
+    return landmark_coords
+
+
+prev_y16, prev_y12, prev_y11, prev_y15, prev_ybody = None, None, None, None, None
+
 def rotateservo(pin, angle):
     board.digital[pin].write(angle)
     sleep(0.015)
 
+def check_and_rotate_hand(coord, prev_coord, pin):
+    if prev_coord is not None:
+        if coord is not None and abs(coord - prev_coord) <= 0.01:
+            print('something is NOT moving !!!')
+            rotateservo(pin, 90)
+
+        elif coord is not None and prev_coord is not None and coord > prev_coord:
+            print('something is moving up')
+            rotateservo(pin, 180)
+
+        elif coord is not None and prev_coord is not None and coord < prev_coord:
+            print('something is moving down')
+            rotateservo(pin, 0)
+
+
+def check_and_rotate_body(coord, prev_coord):
+    global pin, pin2, pin3
+
+    if prev_coord is not None:
+        if coord is not None and abs(coord - prev_coord) <= 0.01:
+            print('body is NOT moving !!!')
+            rotateservo(pin3, 90)
+
+
+        elif coord is not None and prev_coord is not None and coord > prev_coord:
+            print('body is moving up')
+            rotateservo(pin, 180)
+            rotateservo(pin2, 180)
+            rotateservo(pin3, 180)
+
+
+        elif coord is not None and prev_coord is not None and coord < prev_coord:
+            print('body is moving down')
+            rotateservo(pin, 0)
+            rotateservo(pin2, 0)
+            rotateservo(pin3, 0)
+
+
+rotateservo(pin, 90)
 rotateservo(pin2, 90)
 rotateservo(pin3, 90)
-    
+
 while True:
-    
+
+    rotateservo(pin, 90)
     rotateservo(pin2, 90)
     rotateservo(pin3, 90)
-    
+
+    # read frame
     ret, frame = cap.read()
-    # print(ret)
-    # print(frame.shape)
 
-    frame = cv2.flip(frame, 1)
+    # frame = cv2.resize(frame, (350, 600))
 
-    gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+    frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
 
-    # frame = cv2.resize(frame, (0, 0), fx=2.8, fy=2.1)
+    pose_results = pose.process(frame_rgb)
 
-    height, width, channel = frame.shape
-    screen = width, height # 640, 480
+    mp_drawing.draw_landmarks(frame, pose_results.pose_landmarks, mp_pose.POSE_CONNECTIONS)
 
-    one_img.check()
-    two_img.check()
-    three_img.check()
+    landmark_coords = get_landmark_coords(pose_results)
 
-    
-    if (one_img.max_val >= 0.6):
-        cv2.rectangle(frame, one_img.location, one_img.bottom_right, 255, 5)
-        print ("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
-        print ("coords: ", ((one_img.location[1] + one_img.bottom_right[1]) / 2) / 3, "!!!!!")
-        
-        coords = ((one_img.location[1] + one_img.bottom_right[1]) / 2) / 3
-        
-        rotateservo(pin, coords)
-    
-    if (two_img.max_val >= 0.6):
-        cv2.rectangle(frame, two_img.location, two_img.bottom_right, 128, 5)
-        print ("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
-        print ("coords: ", ((two_img.location[1] + two_img.bottom_right[1]) / 2) / 3, "!!!!!")
-        
-        coords = ((two_img.location[1] + two_img.bottom_right[1]) / 2) / 3
-        
-        if ((two_img.location[1] + two_img.bottom_right[1]) / 2 >= 240):
-            rotateservo(pin2, 100)
-        else:
-            rotateservo(pin2, 80)
-        
-    if (three_img.max_val >= 0.6):
-        cv2.rectangle(frame, three_img.location, three_img.bottom_right, 0, 5)
-        print ("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
-        print ("coords: ", ((three_img.location[1] + three_img.bottom_right[1]) / 2) / 3, "!!!!!")
-        
-        coords = ((three_img.location[1] + three_img.bottom_right[1]) / 2) / 3
+    y16 = landmark_coords['Landmark 16'][1] if 'Landmark 16' in landmark_coords else None
+    y12 = landmark_coords['Landmark 12'][1] if 'Landmark 12' in landmark_coords else None
+    y11 = landmark_coords['Landmark 11'][1] if 'Landmark 11' in landmark_coords else None
+    y15 = landmark_coords['Landmark 15'][1] if 'Landmark 15' in landmark_coords else None
 
-        if ((two_img.location[1] + two_img.bottom_right[1]) / 2 >= 240):
-            rotateservo(pin3, 100)
-        else:
-            rotateservo(pin3, 80)
-        
-        
-    cv2.imshow('frame', frame)
+    print(y16)
+
+    if y12 is not None and y11 is not None:
+        ybody = (y12 + y11) / 2
+
+        check_and_rotate_hand(y16, prev_y16, pin)
+        check_and_rotate_hand(y15, prev_y15, pin2)
+        check_and_rotate_body(ybody, prev_ybody)
+
+        # print(int(y16 * 480))
+        # print(int(prev_y16 * 480))
+
+        prev_y16, prev_y12, prev_y11, prev_y15, prev_ybody = y16, y12, y11, y15, ybody
+
+    cv2.imshow('Output', frame)
 
     if cv2.waitKey(1) == ord('q'):
         break
