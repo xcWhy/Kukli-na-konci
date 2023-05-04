@@ -84,37 +84,35 @@ while True:
 
     # read frame
     ret, frame = cap.read()
-    try:
 
-        # frame = cv2.resize(frame, (350, 600))
+    # frame = cv2.resize(frame, (350, 600))
 
-        frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+    frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
 
-        pose_results = pose.process(frame_rgb)
+    pose_results = pose.process(frame_rgb)
 
-        mp_drawing.draw_landmarks(frame, pose_results.pose_landmarks, mp_pose.POSE_CONNECTIONS)
+    mp_drawing.draw_landmarks(frame, pose_results.pose_landmarks, mp_pose.POSE_CONNECTIONS)
 
-        landmark_coords = get_landmark_coords(pose_results)
+    landmark_coords = get_landmark_coords(pose_results)
 
-        y16 = landmark_coords['Landmark 16'][1] if 'Landmark 16' in landmark_coords else None
-        y12 = landmark_coords['Landmark 12'][1] if 'Landmark 12' in landmark_coords else None
-        y11 = landmark_coords['Landmark 11'][1] if 'Landmark 11' in landmark_coords else None
-        y15 = landmark_coords['Landmark 15'][1] if 'Landmark 15' in landmark_coords else None
+    y16 = landmark_coords['Landmark 16'][1] if 'Landmark 16' in landmark_coords else None
+    y12 = landmark_coords['Landmark 12'][1] if 'Landmark 12' in landmark_coords else None
+    y11 = landmark_coords['Landmark 11'][1] if 'Landmark 11' in landmark_coords else None
+    y15 = landmark_coords['Landmark 15'][1] if 'Landmark 15' in landmark_coords else None
 
-        ybody = (y12 + y11) / 2
+    ybody = (y12 + y11) / 2
 
-        check_and_rotate_hand(y16, prev_y16, pin)
-        check_and_rotate_hand(y15, prev_y15, pin2)
-        check_and_rotate_body(ybody, prev_ybody)
+    check_and_rotate_hand(y16, prev_y16, pin)
+    check_and_rotate_hand(y15, prev_y15, pin2)
+    check_and_rotate_body(ybody, prev_ybody)
 
-        # print(int(y16 * 480))
-        # print(int(prev_y16 * 480))
+    # print(int(y16 * 480))
+    # print(int(prev_y16 * 480))
 
-        prev_y16, prev_y12, prev_y11, prev_y15, prev_ybody = y16, y12, y11, y15, ybody
+    prev_y16, prev_y12, prev_y11, prev_y15, prev_ybody = y16, y12, y11, y15, ybody
 
-        cv2.imshow('Output', frame)
-    except:
-        break
+    cv2.imshow('Output', frame)
+
 
     if cv2.waitKey(1) == ord('q'):
         break
