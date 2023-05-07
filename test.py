@@ -3,10 +3,11 @@ import mediapipe as mp
 from pyfirmata import Arduino, SERVO, util
 from time import sleep
 
-port = 'COM7'
+port = 'COM5'
 pin = 9 # 360
 pin2 = 10 # 360
 pin3 = 11 # 360
+
 board = Arduino(port)
 
 board.digital[pin].mode = SERVO
@@ -37,55 +38,51 @@ def rotateservo(pin, angle):
 def check_and_rotate_hand(coord, prev_coord, pin):
     if prev_coord is not None:
         if coord is not None and abs(coord - prev_coord) <= 0.01:
-            print('something is NOT moving !!!')
+            print('Hand is not moving enough')
             rotateservo(pin, 90)
 
         elif coord is not None and prev_coord is not None and coord > prev_coord:
-            print('something is moving up')
+            print('Hand is moving upwards')
             rotateservo(pin, 180)
 
         elif coord is not None and prev_coord is not None and coord < prev_coord:
-            print('something is moving down')
+            print('Hand is moving downwards')
             rotateservo(pin, 0)
 
 
 def check_and_rotate_body(coord, prev_coord):
-    global pin, pin2, pin3
+    global pin
 
     if prev_coord is not None:
         if coord is not None and abs(coord - prev_coord) <= 0.01:
-            print('body is NOT moving !!!')
-            rotateservo(pin3, 90)
-
+            print('Body is not moving enough')
+            rotateservo(pin, 90)
 
         elif coord is not None and prev_coord is not None and coord > prev_coord:
-            print('body is moving up')
+            print('Body is moving upwards')
             rotateservo(pin, 180)
             rotateservo(pin2, 180)
             rotateservo(pin3, 180)
 
-
         elif coord is not None and prev_coord is not None and coord < prev_coord:
-            print('body is moving down')
+            print('Body is moving downwards')
             rotateservo(pin, 0)
             rotateservo(pin2, 0)
             rotateservo(pin3, 0)
-
+            
+            
 
 rotateservo(pin, 90)
 rotateservo(pin2, 90)
 rotateservo(pin3, 90)
 
-while True:
 
-    rotateservo(pin, 90)
-    rotateservo(pin2, 90)
-    rotateservo(pin3, 90)
+while True:
 
     # read frame
     ret, frame = cap.read()
 
-    # frame = cv2.resize(frame, (350, 600))
+    # frame = cv2.resize(frame, (1000, 1000))
 
     frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
 
@@ -96,23 +93,21 @@ while True:
     landmark_coords = get_landmark_coords(pose_results)
 
     y16 = landmark_coords['Landmark 16'][1] if 'Landmark 16' in landmark_coords else None
+    y15 = landmark_coords['Landmark 15'][1] if 'Landmark 15' in landmark_coords else None
     y12 = landmark_coords['Landmark 12'][1] if 'Landmark 12' in landmark_coords else None
     y11 = landmark_coords['Landmark 11'][1] if 'Landmark 11' in landmark_coords else None
-    y15 = landmark_coords['Landmark 15'][1] if 'Landmark 15' in landmark_coords else None
-
-    print(y16)
-
+    
     if y12 is not None and y11 is not None:
         ybody = (y12 + y11) / 2
 
+        # print(y16)
+
         check_and_rotate_hand(y16, prev_y16, pin)
-        check_and_rotate_hand(y15, prev_y15, pin2)
+        check_and_rotate_hand(y15, prev_y16, pin3)
         check_and_rotate_body(ybody, prev_ybody)
+        
 
-        # print(int(y16 * 480))
-        # print(int(prev_y16 * 480))
-
-        prev_y16, prev_y12, prev_y11, prev_y15, prev_ybody = y16, y12, y11, y15, ybody
+        prev_y16, prev_y15, prev_y12, prev_y11, prev_ybody = y16, y15, y12, y11, ybody
 
     cv2.imshow('Output', frame)
 
