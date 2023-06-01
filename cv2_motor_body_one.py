@@ -3,8 +3,8 @@ import mediapipe as mp
 from pyfirmata import Arduino, SERVO, util
 from time import sleep
 
-port = 'COM5'
-pin = 9 # 360
+port = 'COM7'
+pin = 9  # 360
 board = Arduino(port)
 
 board.digital[pin].mode = SERVO
@@ -26,23 +26,31 @@ def get_landmark_coords(pose_results):
 
 prev_y16, prev_y12, prev_y11, prev_y15, prev_ybody = None, None, None, None, None
 
+
 def rotateservo(pin, angle):
     board.digital[pin].write(angle)
-    sleep(0.015)
+    sleep(0.095)
+
 
 def check_and_rotate_hand(coord, prev_coord, pin):
+    global board
+
+
     if prev_coord is not None:
         if coord is not None and abs(coord - prev_coord) <= 0.01:
-            print('Hand is not moving enough')
+            print(f"Hand {pin} NONE movement")
             rotateservo(pin, 90)
 
-        elif coord is not None and prev_coord is not None and coord > prev_coord:
-            print('Hand is moving upwards')
+        elif coord is not None and coord > prev_coord:
+            print(f"Hand {pin} is moving upwards")
             rotateservo(pin, 180)
 
-        elif coord is not None and prev_coord is not None and coord < prev_coord:
-            print('Hand is moving downwards')
+        elif coord is not None and coord < prev_coord:
+            print(f"Hand {pin} is moving downwards")
             rotateservo(pin, 0)
+
+
+
 
 
 def check_and_rotate_body(coord, prev_coord):
@@ -60,10 +68,9 @@ def check_and_rotate_body(coord, prev_coord):
         elif coord is not None and prev_coord is not None and coord < prev_coord:
             print('Body is moving downwards')
             rotateservo(pin, 0)
-            
+
 
 rotateservo(pin, 90)
-
 
 while True:
 
@@ -82,10 +89,9 @@ while True:
 
     landmark_coords = get_landmark_coords(pose_results)
 
-    y16 = landmark_coords['Landmark 16'][1] if 'Landmark 16' in landmark_coords else None
+    y16 = landmark_coords['Landmark 0'][1] if 'Landmark 0' in landmark_coords else None
 
     print(y16)
-
 
     check_and_rotate_hand(y16, prev_y16, pin)
 
